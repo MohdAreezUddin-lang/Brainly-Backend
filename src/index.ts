@@ -2,8 +2,9 @@ import express from "express";
 import { ContentModel, UserModel } from "./db";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { JWT_SECRET } from "./config";
 import { UserMiddleware } from "./middleware";
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 app.use(express.json());
@@ -56,11 +57,16 @@ app.post("/api/v1/signin", async (req, res) => {
     const matchPassword = await bcrypt.compare(password, user.password);
 
     if (matchPassword) {
+      const jwtSecret = process.env.JWT_SECRET;
+      if (!jwtSecret) {
+        return res.status(500).json({ message: "JWT secret not configured" });
+      }
+
       const token = jwt.sign(
         {
           id: user._id,
         },
-        JWT_SECRET,
+        jwtSecret,
       );
       res.status(200).json({
         token: token,
