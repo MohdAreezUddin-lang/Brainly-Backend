@@ -1,11 +1,13 @@
 import express from "express";
-import { ContentModel, UserModel } from "./db";
-import bcrypt from "bcrypt";
+import bcrypt, { hash } from "bcrypt";
 import jwt from "jsonwebtoken";
-import { UserMiddleware } from "./middleware";
 import dotenv from 'dotenv';
-dotenv.config();
 
+import { ContentModel, LinkModel, UserModel } from "./db";
+import { UserMiddleware } from "./middleware";
+import { getRandomString } from "./utils";
+
+dotenv.config();
 const app = express();
 app.use(express.json());
 
@@ -86,7 +88,7 @@ app.post("/api/v1/content",UserMiddleware, async (req, res) => {
 
     const { title, type, link, tags } = req.body;
 
-    await ContentModel.create({
+    const content = await ContentModel.create({
         title,
         type,
         link,
@@ -95,6 +97,12 @@ app.post("/api/v1/content",UserMiddleware, async (req, res) => {
         userId:req.userId
     })
 
+    if(!content) {
+      res.status(500).json({
+        message:"You have missed something, like giving title or etc"
+      })
+    }
+
     res.status(200).json({ message:"content created "})
 });
 
@@ -102,27 +110,101 @@ app.post("/api/v1/content",UserMiddleware, async (req, res) => {
 app.get("/api/v1/content", UserMiddleware, async (req, res) => {
     // @ts-ignore
     const userId = req.userId;
-    await ContentModel.findOne({
+    const content = await ContentModel.find({
         userId:userId
     }).populate("userId","username")
-    res.json({message:"Recevied"})
+    res.json({
+      content
+    })
 });
 
 // Delete a document
-app.delete("/api/v1/content",UserMiddleware, async (req, res) => {
+app.delete("/api/v1/content", UserMiddleware, async (req, res) => {
     const creatorId = req.body.creatorId;
-    await ContentModel.deleteMany({
+    await ContentModel.deleteOne({
         creatorId,
         // @ts-ignore
         userId:req.userId
     })
+    res.json({ message: "Content deleted"})
 });
 
 // Create a shareable link
-app.post("/api/v1/brain/share", (req, res) => {});
+app.post("/api/v1/brain/share", UserMiddleware, async (req, res) => {
+    const { share } = req.body;
+    
+    if(share){
+    const existinLink = await LinkModel.findOne({
+      //@ts-ignore
+      userId:req.userId
+    })
 
-// Share another user's Shareable link
-app.get("/api/v1/brain/:shareLink", (req, res) => {});
+    if(existinLink) {
+      res.json({
+        //@ts-ignore
+        message:"Link already exists " + existinLink.hash
+
+      })
+      return;
+    }
+
+      const hash = getRandomString(10);
+      await LinkModel.create({
+        //@ts-ignore
+        userId:req.userId,
+        hash:hash
+      })
+      res.json({ 
+        message:"Shareable link created "
+         + hash
+      })
+    } else {
+      await LinkModel.deleteOne({
+        //@ts-ignore
+        userId:req.userId
+      })
+      res.json({
+        message:"Link deleted"
+      })
+    }
+});
+
+// Share link to another user
+app.get("/api/v1/brain/:shareLink", UserMiddleware, async (req, res) => {
+    const hash = req.params.shareLink;
+
+    const link = await LinkModel.findOne({
+      hash
+    })
+
+    if(!link) {
+      res.json({
+        message:"Invalid input"
+      })
+      return;
+    }
+
+    
+    const user = await UserModel.findOne({
+      _id:link.userId
+    })
+    
+    if(!user) {
+      res.json({
+        message:"Invalid, user not found"
+      })
+      return;
+    }
+    
+    const content = await ContentModel.find({
+      userId:link.userId
+    })
+    res.json({
+      username:user.username,
+      content:content
+    })
+
+});
 
 
-app.listen(3000);
+app.listen(process.env.PORT);
