@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt, { hash } from "bcrypt";
 import jwt from "jsonwebtoken";
 import dotenv from 'dotenv';
+import cors from 'cors';
 
 import { ContentModel, LinkModel, UserModel } from "./db";
 import { UserMiddleware } from "./middleware";
@@ -10,13 +11,20 @@ import { getRandomString } from "./utils";
 dotenv.config();
 const app = express();
 app.use(express.json());
+app.use(cors())
 
 // Signup
 app.post("/api/v1/signup", async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, email } = req.body;
 
     const existingUser = await UserModel.findOne({ username });
+
+    if(!username && !password && !email) {
+      return res.json({
+        message:"Enter correct username, password and email"
+      })
+    }
 
     if (existingUser) {
       return res
@@ -30,6 +38,7 @@ app.post("/api/v1/signup", async (req, res) => {
 
     const user = await UserModel.create({
       username,
+      email,
       password: hashedPassword,
     });
 
