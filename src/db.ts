@@ -17,12 +17,12 @@ const LinkSchema = new Schema({
     userId: { type:Types.ObjectId, ref:'User', required:true, unique:true }
 })
 
-const context = ['image', 'audio', 'video', 'article' ]
+const context = [ 'youtube','twitter', 'instagram' ]
 const ContentSchema = new Schema({
     link: { type:String, required:true },
     type: { type:String, enum:context, required:true },
     title: { type:String, required:true },
-    tags: [{ type:Types.ObjectId, ref:'Tag', required:true }],
+    tags: [{ type:Types.ObjectId, ref:'Tag', required:false }],
     userId: { type:Types.ObjectId, ref:'User', required:true }
 })
 

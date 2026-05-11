@@ -95,13 +95,13 @@ app.post("/api/v1/signin", async (req, res) => {
 // Create content
 app.post("/api/v1/content",UserMiddleware, async (req, res) => {
 
-    const { title, type, link, tags } = req.body;
+    const { type, link } = req.body;
 
     const content = await ContentModel.create({
-        title,
+        title:req.body.title,
         type,
         link,
-        tags,
+        tags:[],
         // @ts-ignore
         userId:req.userId
     })
@@ -131,7 +131,7 @@ app.get("/api/v1/content", UserMiddleware, async (req, res) => {
 app.delete("/api/v1/content", UserMiddleware, async (req, res) => {
     const creatorId = req.body.creatorId;
     await ContentModel.deleteOne({
-        creatorId,
+        _id:creatorId,
         // @ts-ignore
         userId:req.userId
     })
@@ -151,7 +151,7 @@ app.post("/api/v1/brain/share", UserMiddleware, async (req, res) => {
     if(existinLink) {
       res.json({
         //@ts-ignore
-        message:"Link already exists " + existinLink.hash
+        hash: existinLink.hash
 
       })
       return;
@@ -163,9 +163,8 @@ app.post("/api/v1/brain/share", UserMiddleware, async (req, res) => {
         userId:req.userId,
         hash:hash
       })
-      res.json({ 
-        message:"Shareable link created "
-         + hash
+      res.json({
+        hash
       })
     } else {
       await LinkModel.deleteOne({
